@@ -12,7 +12,7 @@ export const signIn = async (username, password) => {
     username: username,
     password: password,
   });
-  return status;
+  return status.data;
 };
 
 export const signUp = async (username, fullname, password) => {

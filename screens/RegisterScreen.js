@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import CustomImage from "../components/image";
 import { REGISTERIMAGE } from "../assets";
@@ -14,7 +15,9 @@ import { Entypo } from "@expo/vector-icons";
 import CheckBox from "@react-native-community/checkbox";
 import RadioForm from "react-native-simple-radio-button";
 import { mailformat } from "../constants";
-import { getSingleUser, signUp } from "../services";
+import { signUp } from "../services";
+import { register } from "../actions/userActions";
+import { connect } from "react-redux";
 
 class RegisterScreen extends React.Component {
   constructor(props) {
@@ -111,7 +114,7 @@ class RegisterScreen extends React.Component {
         },
       });
     } else if (this.state.passwordVisibility) {
-      if (!this.state.password.match(this.state.passwordConfirm)) {
+      if (this.state.password !== this.state.passwordConfirm) {
         this.setState({
           error: {
             status: true,
@@ -119,45 +122,28 @@ class RegisterScreen extends React.Component {
           },
         });
       } else {
-        try {
-          const status = await signUp(
-            this.state.email,
-            this.state.fullName,
-            this.state.password
-          );
-          this.props.navigation.navigate("User", {
-            user: { username: this.state.email },
-          });
-        } catch (error) {
-          this.setState({
-            error: {
-              status: true,
-              message: "Error! username already exists.",
-            },
-          });
-        }
-      }
-    } else {
-      try {
-        const status = await signUp(
+        this.props.registerUser(
           this.state.email,
           this.state.fullName,
           this.state.password
         );
-        this.props.navigation.navigate("User", {
-          user: { username: this.state.email },
-        });
-      } catch (error) {
-        this.setState({
-          error: {
-            status: true,
-            message: "Error! username already exists.",
-          },
-        });
       }
+    } else {
+      this.props.registerUser(
+        this.state.email,
+        this.state.fullName,
+        this.state.password
+      );
     }
   };
 
+  componentDidUpdate() {
+    if (this.props.data) {
+      this.props.navigation.navigate("User", {
+        user: { username: this.state.email },
+      });
+    }
+  }
   render() {
     return (
       <ScrollView contentContainerStyle={{ flexGrow: 1, height: 700 }}>
@@ -232,6 +218,12 @@ class RegisterScreen extends React.Component {
                 <ErrorMessage errorMsg={this.state.error.message} />
               </View>
             ) : null}
+
+            {this.props.error ? (
+              <View style={styles.errorMessages}>
+                <ErrorMessage errorMsg={this.props.error} />
+              </View>
+            ) : null}
           </View>
           <View style={styles.root}>
             <View style={styles.userAgreementContent}>
@@ -291,13 +283,22 @@ class RegisterScreen extends React.Component {
                 onPress={(value) => this.setState({ country: value })}
                 labelStyle={{ marginRight: 10 }}
               />
-              <TouchableOpacity
-                onPress={() => {
-                  this.signUpHandler();
-                }}
-              >
-                <Text style={styles.signButton}>Sign Up</Text>
-              </TouchableOpacity>
+              {this.props.loading ? (
+                <TouchableOpacity>
+                  <Text style={styles.signButton}>
+                    <ActivityIndicator size="small" color="orange" />
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => {
+                    this.signUpHandler();
+                  }}
+                >
+                  <Text style={styles.signButton}>Sign Up</Text>
+                </TouchableOpacity>
+              )}
+
               <View
                 style={{
                   marginBottom: 20,
@@ -332,7 +333,23 @@ class RegisterScreen extends React.Component {
   }
 }
 
-export default RegisterScreen;
+const mapStateToProps = (state) => {
+  console.log(state);
+  return {
+    loading: state.register.loading,
+    data: state.register.data,
+    error: state.register.error,
+  };
+};
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    registerUser: async (username, fullname, password) =>
+      await dispatch(register(username, fullname, password)),
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(RegisterScreen);
 
 const styles = StyleSheet.create({
   container: {

@@ -1,5 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import React from "react";
+import { connect } from "react-redux";
 import {
   StyleSheet,
   Text,
@@ -7,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import CheckBox from "@react-native-community/checkbox";
@@ -15,9 +17,8 @@ import CustomImage from "../components/image";
 import { LOGINIMAGE } from "../assets";
 import { mailformat } from "../constants";
 import TextBox from "../components/textBox";
-import { signIn } from "../services";
-
-export default class LoginScreen extends React.Component {
+import { login, loginRequest } from "../actions/userActions";
+class LoginScreen extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -68,20 +69,14 @@ export default class LoginScreen extends React.Component {
         },
       });
     } else {
-      try {
-        const status = await signIn(this.state.email, this.state.password);
-        this.props.navigation.navigate("User", { user: status.data.user });
-      } catch (error) {
-        this.setState({
-          error: {
-            status: true,
-            message: "Invalid credentials!",
-          },
-        });
-      }
+      this.props.loginUser(this.state.email, this.state.password);
     }
   };
-
+  componentDidUpdate() {
+    if (this.props.data) {
+      this.props.navigation.navigate("User", { user: this.props.data.user });
+    }
+  }
   render() {
     return (
       <ScrollView
@@ -98,6 +93,12 @@ export default class LoginScreen extends React.Component {
           {this.state.error.status ? (
             <View style={styles.errorMessages}>
               <ErrorMessage errorMsg={this.state.error.message} />
+            </View>
+          ) : null}
+
+          {this.props.error ? (
+            <View style={styles.errorMessages}>
+              <ErrorMessage errorMsg={this.props.error} />
             </View>
           ) : null}
 
@@ -148,13 +149,22 @@ export default class LoginScreen extends React.Component {
               />
               <Text style={{ marginLeft: 5 }}>Stay signed-in</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                this.loginHandler();
-              }}
-            >
-              <Text style={styles.loginButton}>Login</Text>
-            </TouchableOpacity>
+            {this.props.loading ? (
+              <TouchableOpacity>
+                <Text style={styles.loginButton}>
+                  <ActivityIndicator size="small" color="orange" />
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  this.loginHandler();
+                }}
+              >
+                <Text style={styles.loginButton}>Login</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity>
               <Text
                 style={{ marginTop: 10, color: "orange", fontWeight: "bold" }}
@@ -185,6 +195,23 @@ export default class LoginScreen extends React.Component {
     );
   }
 }
+const mapStateToProps = (state) => {
+  console.log(state);
+  return {
+    loading: state.login.loading,
+    data: state.login.data,
+    error: state.login.error,
+  };
+};
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    loginUser: async (username, password) =>
+      await dispatch(login(username, password)),
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(LoginScreen);
 
 const styles = StyleSheet.create({
   root: {
